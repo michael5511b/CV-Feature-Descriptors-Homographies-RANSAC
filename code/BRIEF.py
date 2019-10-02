@@ -1,10 +1,11 @@
+import sys
 import os
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 from scipy.spatial.distance import cdist
 from keypointDetect import DoGdetector
-
+np.set_printoptions(threshold=sys.maxsize)
 
 def makeTestPattern(patch_width=9, nbits=256):
     '''
@@ -23,7 +24,31 @@ def makeTestPattern(patch_width=9, nbits=256):
     #############################
     # TO DO ...
     # Generate testpattern here
-    
+
+    # From the "BRIEF: Binary robust independent elementary features" paper (section 3.2 GII)
+    # It mentioned that if the test set  are sampled from an isotropic Gaussian distribution.
+    # it will have the best performance
+    # From paper, sigma = patch size / 5 has the best results
+    # Set mean (mid) point to patch_size / 2 (which is 9/2) so it is a normal distribution from the
+    # middle of the patch
+    # 4 columns, holding [x1 x2 y1 y2]
+    gauss_distr = np.random.normal(loc=patch_width / 2, scale=patch_width / 5, size=(nbits, 4))
+
+    # Round and convert the values to int, so that they become actual coordinates
+    compare = np.round(gauss_distr).astype(int)
+
+    # clip all the values within
+    compare = np.clip(compare, 0, patch_width - 1)
+
+    # Seperate the X and Y coordinates into two separate arrays
+    compX2D = compare[:, 0:2]
+    compY2D = compare[:, 2:4]
+
+    # ravel converts the 2D coordinates into linear indices
+    # We can later use np.unravel_index to convert it back to 2D
+    compareX = np.ravel_multi_index(compX2D.T, (9, 9))
+    compareY = np.ravel_multi_index(compY2D.T, (9, 9))
+
     return  compareX, compareY
 
 
