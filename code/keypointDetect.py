@@ -48,7 +48,7 @@ def createDoGPyramid(gaussian_pyramid, levels=[-1, 0, 1, 2, 3, 4]):
     # compute DoG_pyramid here
     # Research LoG vs DoG
     for i in range(len(levels) - 1):
-        DoG_pyramid[:, :, i] = gaussian_pyramid[:, :, i] - gaussian_pyramid[:, :, i+1]
+        DoG_pyramid[:, :, i] = gaussian_pyramid[:, :, i + 1] - gaussian_pyramid[:, :, i]
     DoG_levels = levels[1:]
     return DoG_pyramid, DoG_levels
 
@@ -150,32 +150,41 @@ def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature, th_contrast=0.
     # at the same location will have the same value. Thus only the local Extrema (max in this case) will be stored in
     # the array max
     max = np.where(DoG_pyramid == dilated_DoG)
-
+    print(len(max[0]))
+    print(len(max[1]))
+    print(len(max[2]))
+    # max = np.array([max[0], max[1], max[2]]).transpose().tolist()
+    # print(len(max))
     # Use loop to check if the pixel is also the max of neighbor scales and if it fits within threshold
+    check = 0
     for i in range(len(max[0])):
         x = max[0][i]
         y = max[1][i]
         z = max[2][i]
 
+
         if z == 0:
-            if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z + 1] and DoG_pyramid[x, y, z] < th_contrast and\
-                    principal_curvature[x, y, z] > th_r:
-                if i == 0:
+            if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z + 1] and abs(DoG_pyramid[x, y, z]) > th_contrast and\
+                    principal_curvature[x, y, z] < th_r:
+                if check == 0:
+                    check += 1
                     locsDoG = np.array([[x, y, z]])
                 else:
                     locsDoG = np.concatenate((locsDoG, np.array([[x, y, z]])), axis=0)
         elif z == 4:
-            if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z - 1] and DoG_pyramid[x, y, z] < th_contrast and\
-                    principal_curvature[x, y, z] > th_r:
-                if i == 0:
+            if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z - 1] and abs(DoG_pyramid[x, y, z]) > th_contrast and\
+                    principal_curvature[x, y, z] < th_r:
+                if check == 0:
+                    check += 1
                     locsDoG = np.array([[x, y, z]])
                 else:
                     locsDoG = np.concatenate((locsDoG, np.array([[x, y, z]])), axis=0)
         else:
             if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z - 1] and \
                     DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z + 1] and\
-                    DoG_pyramid[x, y, z] < th_contrast and principal_curvature[x, y, z] > th_r:
-                if i == 0:
+                    abs(DoG_pyramid[x, y, z]) > th_contrast and principal_curvature[x, y, z] < th_r:
+                if check == 0:
+                    check += 1
                     locsDoG = np.array([[x, y, z]])
                 else:
                     locsDoG = np.concatenate((locsDoG, np.array([[x, y, z]])), axis=0)

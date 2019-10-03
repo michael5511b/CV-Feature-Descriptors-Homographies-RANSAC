@@ -49,7 +49,7 @@ def makeTestPattern(patch_width=9, nbits=256):
     compareX = np.ravel_multi_index(compX2D.T, (9, 9))
     compareY = np.ravel_multi_index(compY2D.T, (9, 9))
 
-    return  compareX, compareY
+    return compareX, compareY
 
 
 # load test pattern for Brief
@@ -89,7 +89,31 @@ def computeBrief(im, gaussian_pyramid, locsDoG, k, levels,
     ##############################
     # TO DO ...
     # compute locs, desc here
-    
+    locs = []
+    desc = []
+    H = im.shape[0]
+    W = im.shape[1]
+    for i in range(locsDoG.shape[0]):
+        if locsDoG[i][0] + 4 <= H - 1 and locsDoG[i][0] - 4 >= 0 and\
+            locsDoG[i][1] + 4 <= W - 1 and locsDoG[i][1] - 4 >= 0:
+            locs.append(locsDoG[i][:])
+
+    for i in range(len(locs)):
+        x = locs[i][0]
+        y = locs[i][1]
+        patch = im[x - 4: x + 4, y - 4: y + 4]
+        patch_desc = []
+        for j in range(compareX.shape[0]):
+            compX2D = np.unravel_index(compareX, (9, 9)).T
+            compY2D = np.unravel_index(compareY, (9, 9)).T
+            if im[compX2D[j][0], compX2D[j][1]] < im[compY2D[j][0], compY2D[j][1]]:
+                patch_desc.append(1)
+            else:
+                patch_desc.append(0)
+        desc.append(patch_desc)
+    locs = np.array(locs)
+    desc = np.array(desc)
+
     return locs, desc
 
 
@@ -108,7 +132,23 @@ def briefLite(im):
     
     ###################
     # TO DO ...
-    
+
+
+    test_pattern_file = '../results/testPattern.npy'
+    if os.path.isfile(test_pattern_file):
+        # load from file if exists
+        compareX, compareY = np.load(test_pattern_file)
+    else:
+        # produce and save patterns if not exist
+        compareX, compareY = makeTestPattern(patch_width=9, nbits=256)
+        if not os.path.isdir('../results'):
+            os.mkdir('../results')
+        np.save(test_pattern_file, [compareX, compareY])
+
+    locsDoG, gaussian_pyramid = DoGdetector(im)
+
+    locs, desc = computeBrief(im, gaussian_pyramid, locsDoG, 9, [-1,0,1,2,3,4], compareX, compareY)
+
     return locs, desc
 
 
@@ -164,14 +204,17 @@ if __name__ == '__main__':
     
     # test briefLite
     im = cv2.imread('../data/model_chickenbroth.jpg')
-    locs, desc = briefLite(im)  
-    fig = plt.figure()
-    plt.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), cmap='gray')
-    plt.plot(locs[:,0], locs[:,1], 'r.')
-    plt.draw()
-    plt.waitforbuttonpress(0)
-    plt.close(fig)
-    
+    locs, desc = briefLite(im)
+    locsDoG, gaussian_pyramid = DoGdetector(im)
+    # fig = plt.figure()
+    # plt.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), cmap='gray')
+    # plt.plot(locs[:,1], locs[:,0], 'r.')
+    #
+    # plt.draw()
+    #
+    # plt.waitforbuttonpress(0)
+    # plt.close(fig)
+
     # test matches
     im1 = cv2.imread('../data/model_chickenbroth.jpg')
     im2 = cv2.imread('../data/chickenbroth_01.jpg')
