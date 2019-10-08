@@ -150,9 +150,7 @@ def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature, th_contrast=0.
     # at the same location will have the same value. Thus only the local Extrema (max in this case) will be stored in
     # the array max
     max = np.where(DoG_pyramid == dilated_DoG)
-    print(len(max[0]))
-    print(len(max[1]))
-    print(len(max[2]))
+
     # max = np.array([max[0], max[1], max[2]]).transpose().tolist()
     # print(len(max))
     # Use loop to check if the pixel is also the max of neighbor scales and if it fits within threshold
@@ -161,7 +159,7 @@ def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature, th_contrast=0.
         x = max[0][i]
         y = max[1][i]
         z = max[2][i]
-
+        # print(np.array([[x, y, z]]))
 
         if z == 0:
             if DoG_pyramid[x, y, z] > DoG_pyramid[x, y, z + 1] and abs(DoG_pyramid[x, y, z]) > th_contrast and\
@@ -187,7 +185,18 @@ def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature, th_contrast=0.
                     check += 1
                     locsDoG = np.array([[x, y, z]])
                 else:
+
                     locsDoG = np.concatenate((locsDoG, np.array([[x, y, z]])), axis=0)
+
+
+    X = locsDoG[:, 0]
+    Y = locsDoG[:, 1]
+    Z = locsDoG[:, 2]
+    G = np.zeros((X.shape[0],3),dtype=int)
+    G[:, 0] = Y
+    G[:, 1] = X
+    G[:, 2] = Z
+    locsDoG = G
 
     return locsDoG
   

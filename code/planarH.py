@@ -13,11 +13,27 @@ def computeH(p1, p2):
                 equation
     '''
     
-    assert(p1.shape[1]==p2.shape[1])
-    assert(p1.shape[0]==2)
+    assert(p1.shape[1] == p2.shape[1])
+    assert(p1.shape[0] == 2)
     #############################
-    # TO DO ...
-    
+    N = p2.shape[1]
+    p2 = np.concatenate((p2, np.ones((1, N))), axis=0)
+
+    # A size = 2N * 9
+    A = np.zeros((N * 2, 9))
+    for i in range(N):
+        A[i * 2, 0: 3] = 0
+        A[i * 2, 3: 6] = -1 * p2[:, i]
+        A[i * 2, 6: 9] = p1[1, i] * p2[:, i]
+        A[i * 2 + 1, 0: 3] = 1 * p2[:, i]
+        A[i * 2 + 1, 3: 6] = 0
+        A[i * 2 + 1, 6: 9] = -p1[0, i] * p2[:, i]
+
+    u, s, v = np.linalg.svd(A, full_matrices=True)
+
+    # Reshape h (9x1) back to H (3x3)
+    H2to1 = np.reshape(v[-1, :], (3, 3))
+
     return H2to1
 
 

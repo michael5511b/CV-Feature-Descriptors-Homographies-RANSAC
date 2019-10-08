@@ -48,7 +48,7 @@ def makeTestPattern(patch_width=9, nbits=256):
     # We can later use np.unravel_index to convert it back to 2D
     compareX = np.ravel_multi_index(compX2D.T, (9, 9))
     compareY = np.ravel_multi_index(compY2D.T, (9, 9))
-    print(compareX.shape)
+
     return compareX, compareY
 
 
@@ -90,30 +90,26 @@ def computeBrief(im, gaussian_pyramid, locsDoG, k, levels,
     # TO DO ...
     # compute locs, desc here
     locs = []
-    desc = np.zeros((locsDoG.shape[0], 256))
-    H = im.shape[0]
-    W = im.shape[1]
     for i in range(locsDoG.shape[0]):
-        if locsDoG[i][0] + 4 <= H - 1 and locsDoG[i][0] - 4 >= 0 and\
-            locsDoG[i][1] + 4 <= W - 1 and locsDoG[i][1] - 4 >= 0:
-            locs.append(locsDoG[i][:])
-    for i in range(len(locs)):
-        x = locs[i][0]
-        y = locs[i][1]
-        patch = im[x - 4: x + 4, y - 4: y + 4]
-        patch_desc = np.zeros((1, 256))
-        for j in range(compareX.shape[0]):
-            compX2D = np.unravel_index(compareX, (9, 9))
-            compY2D = np.unravel_index(compareY, (9, 9))
-
-            if im[compX2D[0][j], compX2D[1][j],0] < im[compY2D[1][j], compY2D[1][j],0]:
-                patch_desc[0, j] = 1
-            else:
-                patch_desc[0, j] = 0
-        desc[i,:] = patch_desc
+        if locsDoG[i][0] - k//2 >= 0 and locsDoG[i][0] + k//2 <= im.shape[1] - 1 and\
+                locsDoG[i][1] - k//2 >= 0 and locsDoG[i][1] +k//2 <= im.shape[0] - 1:
+            locs.append(locsDoG[i, :])
     locs = np.array(locs)
 
+    desc = np.zeros((locs.shape[0], compareX.shape[0])).astype(int)
 
+    for i in range(locs.shape[0]):
+        x = locs[i][1]
+        y = locs[i][0]
+        patch = im[x - 4: x + 5, y - 4: y + 5]
+
+        for j in range(compareX.shape[0]):
+            x1, y1 = np.divmod(compareX[j], k)
+            x2, y2 = np.divmod(compareY[j], k)
+
+            if patch[x1, y1] < patch[x2, y2]:
+                desc[i, j] = 1
+                
     return locs, desc
 
 
@@ -133,22 +129,24 @@ def briefLite(im):
     ###################
     # TO DO ...
 
+    # For BRIEF computation, convert to gray scale of one channel
+    if len(im.shape) == 3:
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    if im.max() > 10:
+        im = np.float32(im) / 255
 
     test_pattern_file = '../results/testPattern.npy'
     if os.path.isfile(test_pattern_file):
         # load from file if exists
         compareX, compareY = np.load(test_pattern_file)
-        print(compareX.shape)
     else:
         # produce and save patterns if not exist
         compareX, compareY = makeTestPattern(patch_width=9, nbits=256)
-        print(compareX.shape)
         if not os.path.isdir('../results'):
             os.mkdir('../results')
         np.save(test_pattern_file, [compareX, compareY])
 
     locsDoG, gaussian_pyramid = DoGdetector(im)
-
     locs, desc = computeBrief(im, gaussian_pyramid, locsDoG, 9, [-1,0,1,2,3,4], compareX, compareY)
 
     return locs, desc
@@ -166,21 +164,15 @@ def briefMatch(desc1, desc2, ratio=0.8):
     '''
     
     D = cdist(np.float32(desc1), np.float32(desc2), metric='hamming')
-    print("D", D)
     # find smallest distance
     ix2 = np.argmin(D, axis=1)
     d1 = D.min(1)
-    print("d1, ", d1)
     # find second smallest distance
     d12 = np.partition(D, 2, axis=1)[:,0:2]
     d2 = d12.max(1)
-    print("d2, ", d2)
-    r = d1/(d2+1e-10)
-    print("r, ", r)
-    is_discr = r<ratio
-    print("is_discr, ", is_discr)
+    r = d1 / (d2 + 1e-10) # 1e-10 prevents the denominator to be 0
+    is_discr = r < ratio
     ix2 = ix2[is_discr]
-    print("ix2, ", ix2)
     ix1 = np.arange(D.shape[0])[is_discr]
 
     matches = np.stack((ix1,ix2), axis=-1)
@@ -195,14 +187,15 @@ def plotMatches(im1, im2, matches, locs1, locs2):
     im[0:im1.shape[0], 0:im1.shape[1]] = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
     im[0:im2.shape[0], im1.shape[1]:] = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
     plt.imshow(im, cmap='gray')
-    print(matches)
+
+    # print(matches)
     for i in range(matches.shape[0]):
 
         pt1 = locs1[matches[i,0], 0:2]
         pt2 = locs2[matches[i,1], 0:2].copy()
         pt2[0] += im1.shape[1]
-        x = np.asarray([pt1[1], pt2[1]])
-        y = np.asarray([pt1[0], pt2[0]])
+        x = np.asarray([pt1[0], pt2[0]])
+        y = np.asarray([pt1[1], pt2[1]])
         plt.plot(x,y,'r')
         plt.plot(x,y,'g.')
 
@@ -214,11 +207,11 @@ if __name__ == '__main__':
     compareX, compareY = makeTestPattern()
     
     # test briefLite
-    #im = cv2.imread('../data/model_chickenbroth.jpg')
-    #locs, desc = briefLite(im)
+    # im = cv2.imread('../data/model_chickenbroth.jpg')
+    # locs, desc = briefLite(im)
     # fig = plt.figure()
     # plt.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), cmap='gray')
-    # plt.plot(locs[:,1], locs[:,0], 'r.')
+    # plt.plot(locs[:,0], locs[:,1], 'r.')
     #
     # plt.draw()
     #
