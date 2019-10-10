@@ -12,6 +12,7 @@ def compute_extrinsics(K, H):
     OUTPUTS:
         R - relative 3D rotation
         t - relative 3D translation
+
     '''
 
     #############################
