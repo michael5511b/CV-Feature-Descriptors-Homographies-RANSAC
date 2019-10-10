@@ -199,6 +199,7 @@ def plotMatches(im1, im2, matches, locs1, locs2):
         plt.plot(x,y,'r')
         plt.plot(x,y,'g.')
 
+    plt.savefig('matches.png')
     plt.show()    
     
 
@@ -221,6 +222,10 @@ if __name__ == '__main__':
     # test matches
     im1 = cv2.imread('../data/model_chickenbroth.jpg')
     im2 = cv2.imread('../data/chickenbroth_01.jpg')
+
+    # im1 = cv2.imread('../data/incline_L.png')
+    # im2 = cv2.imread('../data/incline_R.png')
+
     locs1, desc1 = briefLite(im1)
     locs2, desc2 = briefLite(im2)
 

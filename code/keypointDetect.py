@@ -97,7 +97,6 @@ def computePrincipalCurvature(DoG_pyramid):
                 if det == 0:
                     det = 0.000001
                 principal_curvature[i, j, k] = (t ** 2) / det
-        # np.clip?
     return principal_curvature
 
 
